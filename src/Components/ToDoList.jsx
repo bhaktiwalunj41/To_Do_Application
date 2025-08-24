@@ -6,61 +6,82 @@ const ToDoList = () => {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("");
   const [expanded, setExpanded] = useState({});
+  const [editing, setEditing] = useState(null); 
+  const [editName, setEditName] = useState("");
+  const [editDesc, setEditDesc] = useState("");
 
-// Function to filter todos by search
-const filterBySearch = (todo, search) => {
-  return (
-    todo.name.toLowerCase().includes(search.toLowerCase()) ||
-    todo.description.toLowerCase().includes(search.toLowerCase())
+  // Start editing a todo
+  const startEditing = (todo) => {
+    setEditing(todo.id);
+    setEditName(todo.name);
+    setEditDesc(todo.description);
+  };
+
+  // Save edited todo
+  const saveEdit = (id) => {
+    dispatch({
+      type: "EDIT_TODO",
+      payload: {
+        id,
+        updates: { name: editName, description: editDesc }
+      }
+    });
+    setEditing(null);
+  };
+
+  const cancelEdit = () => {
+    setEditing(null);
+  };
+
+  // Function to filter todos by search
+  const filterBySearch = (todo, search) => {
+    return (
+      todo.name.toLowerCase().includes(search.toLowerCase()) ||
+      todo.description.toLowerCase().includes(search.toLowerCase())
+    );
+  };
+
+  // Function to filter todos by status
+  const filterByStatus = (todo, filter) => {
+    if (filter === "complete") return todo.isComplete;
+    if (filter === "incomplete") return !todo.isComplete;
+    return true; // "all"
+  };
+
+  // Combine both filters
+  const filteredToDos = state.todos.filter(
+    (todo) => filterBySearch(todo, search) && filterByStatus(todo, filter)
   );
-};
 
-// Function to filter todos by status
-const filterByStatus = (todo, filter) => {
-  if (filter === "complete") return todo.isComplete;
-  if (filter === "incomplete") return !todo.isComplete;
-  return true; // "all"
-};
-
-// Combine both filters
-const filteredToDos = state.todos.filter(
-  (todo) => filterBySearch(todo, search) && filterByStatus(todo, filter)
-);
-
-//Toggle read more or less
-const toggleReadMore = (id) =>{
-  setExpanded((prev) => ({
-    ...prev,
-    [id]: !prev[id],
-  }));
-};
+  //Toggle read more or less
+  const toggleReadMore = (id) =>{
+    setExpanded((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
 
   return (
-    
     <div style={{ padding: "20px" }}>
       <div style={{display: "flex" }}>
-      <input type="text"
-      placeholder="Search Tasks..."
-      onChange={(e) => setSearch(e.target.value)}
-      className="form-control mb-3"
-      />
-       
-      {/* Dropdown filter */}
-      <select
-        className="form-select mb-3"
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-      >
-      
-        <option value="all">All Tasks</option>
-        <option value="complete">Completed Tasks</option>
-        <option value="incomplete">Incomplete Tasks</option>
-     
-
-      </select>
+        <input
+          type="text"
+          placeholder="Search Tasks..."
+          onChange={(e) => setSearch(e.target.value)}
+          className="form-control mb-3"
+        />
+        {/* Dropdown filter */}
+        <select
+          className="form-select mb-3"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        >
+          <option value="all">All Tasks</option>
+          <option value="complete">Completed Tasks</option>
+          <option value="incomplete">Incomplete Tasks</option>
+        </select>
       </div>
       
-     
       <h2>All Tasks</h2>
       {filteredToDos.length === 0 ? (
         <p>No tasks yet!</p>
@@ -69,50 +90,92 @@ const toggleReadMore = (id) =>{
           {filteredToDos.map((todo) => {
             const isExpanded = expanded[todo.id];
             const shortText = 
-                todo.description.length > 50
-                ? todo.description.substring(0,50) + "..." : todo.description;
+              todo.description.length > 50
+                ? todo.description.substring(0,50) + "..."
+                : todo.description;
           
-          return(
-            <div  key={todo.id} className="col-sm-12 col-md-6 col-lg-3 ">
-              <div className="card">
-                <div className="card-body">
-                  <h5 className="card-title">
-                    <strong>{todo.name}</strong></h5>
+            return (
+              <div key={todo.id} className="col-sm-12 col-md-6 col-lg-3 ">
+                <div className="card">
+                  <div className="card-body">
+                    {editing === todo.id ? (
+                      <>
+                        {/* Edit Mode */}
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          className="form-control mb-2"
+                        />
+                        <textarea
+                          value={editDesc}
+                          onChange={(e) => setEditDesc(e.target.value)}
+                          className="form-control mb-2"
+                        />
+                        <button
+                          onClick={() => saveEdit(todo.id)}
+                          className="btn btn-success me-2"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          className="btn btn-secondary"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {/* Normal View */}
+                        <h5 className="card-title"><strong>{todo.name}</strong></h5>
+                        <p className="card-text">
+                          {isExpanded ? todo.description : shortText}
+                        </p>
 
-                  <p className="card-text">{ isExpanded ? todo.description: shortText}</p>
+                        {todo.description.length > 50 && (
+                          <button
+                            className="btn btn-link p-0"
+                            onClick={() => toggleReadMore(todo.id)}
+                          >
+                            {isExpanded ? "Read Less" : "Read More"}
+                          </button>
+                        )}
 
-                  {todo.description.length > 50 && (
-                    <button className="btn btn-link p-0"
-                    onClick={() => toggleReadMore(todo.id)}>
-                      {isExpanded ? "Read Less" : "Read More"}
-                    </button>
-                  )}
+                        <span style={{ marginLeft: "10px" }}>
+                          {todo.isComplete ? "✅" : "❌"}
+                        </span>
 
-                  <span style={{ marginLeft: "10px" }}>
-                    {todo.isComplete ? "✅" : "❌"}
-                  </span>
-
-                  <button
-                    style={{ marginLeft: "10px" }}
-                    onClick={() =>
-                      dispatch({ type: "TOGGLE_TODO", payload: todo.id })
-                    }
-                    className="btn btn-warning"
-                  >
-                    Toggle
-                  </button>
-                  <button
-                    style={{ marginLeft: "10px" }}
-                    onClick={() =>
-                      dispatch({ type: "DELETE_TODO", payload: todo.id })
-                    }
-                    className="btn btn-danger"
-                  >
-                    Delete
-                  </button>
+                        <button
+                          style={{ marginLeft: "10px" }}
+                          onClick={() =>
+                            dispatch({ type: "TOGGLE_TODO", payload: todo.id })
+                          }
+                          className="btn btn-warning"
+                        >
+                          Toggle
+                        </button>
+                        <button
+                          style={{ marginLeft: "10px" }}
+                          onClick={() =>
+                            dispatch({ type: "DELETE_TODO", payload: todo.id })
+                          }
+                          className="btn btn-danger"
+                        >
+                          Delete
+                        </button>
+                        <button
+                          style={{ marginLeft: "10px" }}
+                          onClick={() => startEditing(todo)}
+                          className="btn btn-success"
+                        >
+                          Edit
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
             );
           })}
         </div>
